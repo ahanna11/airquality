@@ -1,0 +1,71 @@
+---
+title: "data"
+author: "Abby Hanna"
+date: "5/5/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(stargazer)
+library(tidyverse)
+library(lubridate)
+library(tableone)
+library(ggplot2)
+library(formattable)
+
+ozone_daily <- read_csv("ozone_daily.csv")
+
+recent_weather_daily <- read_csv("recent_weather_daily.csv")
+
+```
+
+
+```{r read in ozone and weather data, echo = FALSE, results='asis'}
+#Reading in averages for ozone readings in Sao Paulo since 2013
+table_one <- ozone_daily %>%
+  filter(municipality == "SAO PAULO") %>%
+  select(date, municipality, mean_ozone, max_ozone, min_ozone)
+
+#Reading in daily weather variable averages in Sao Paulo since 2013
+table_two <- recent_weather_daily %>%
+  filter(city == "São Paulo") %>%
+  select(date, city, max_temp, min_temp, avg_temp, mean_humidity, mean_windspeed)
+
+#Combine the data into one frame
+combined_data_sp <- merge(table_one, table_two)
+
+stargazer(combined_data_sp)
+```
+
+```{r}
+sp_data <- as_tibble(combined_data_sp)
+
+ozone_data <- as_tibble(ozone_daily)
+
+```
+
+
+
+```{r create dummy variables}
+#create variables for after 2015 and in Sao Paulo (city)
+
+after_wc <- ifelse(sp_data$date >= "2015-01-01",1,0)
+
+in_sp <- ifelse(ozone_data$municipality == "SAO PAULO",1,0)
+
+#interaction term for did regression 
+after_wc_did = after_wc*in_sp
+
+```
+
+```{r mean ozone level figures 1 and 2, regression}
+
+y <- combined_data_sp$mean_ozone
+
+ggplot(combined_data_sp, aes(x=date, y=mean_ozone, fill = municipality)) + geom_col(position = "dodge") + labs(title = 'Average ozone levels in the city of São Paulo', subtitle = NULL, caption = 'Time period: 2013-2018', x = 'Year', y = 'Ozone level') + geom_smooth(method='lm', formula= y ~ after_wc + in_sp + after_wc_did)
+
+ggplot(ozone_daily, aes(x=date, y=mean_ozone, fill = municipality)) + geom_col(position = "dodge") + labs(title = 'Average ozone levels in the region of Sao Paulo', subtitle = NULL, caption = 'Time period: 2013-2018', x = 'Year', y = 'Ozone level')
+
+```
+
